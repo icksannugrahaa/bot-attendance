@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+logs/
+.env
+users.json
+tokens/
+status/
+*.log
+
+automation/__pycache__/
+bot/__pycache__/
+
+*.exe
