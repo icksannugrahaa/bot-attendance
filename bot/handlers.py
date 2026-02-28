@@ -47,20 +47,12 @@ async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for alias, u in users.items():
         auto = "ON" if u.get("automation") else "OFF"
         notes = u.get("notes") or "-"
-        if is_admin(update) and u.get("username") == "icksan.nugraha":
-            msg += (
-                f"\n• `{alias}`\n"
-                f"  username: `{u['username']}`\n"
-                f"  auto: `{auto}`\n"
-                f"  notes: {notes}\n"
-            )
-        else:
-            msg += (
-                    f"\n• `{alias}`\n"
-                    f"  username: `{u['username']}`\n"
-                    f"  auto: `{auto}`\n"
-                    f"  notes: {notes}\n"
-            )
+        msg += (
+            f"\n• `{alias}`\n"
+            f"  username: `{u['username']}`\n"
+            f"  auto: `{auto}`\n"
+            f"  notes: {notes}\n"
+        )
 
     await update.effective_message.reply_text(msg, parse_mode="Markdown")
 

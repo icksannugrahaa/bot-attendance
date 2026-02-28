@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from storage import save_token
 from logger import log
-from config import BASE_URL
+from config import URL_VALIDASI_LOGIN, URL_TOKEN
 
 
 class AuthClient:
@@ -24,7 +24,7 @@ class AuthClient:
         # ===============================
         # 1️⃣ VALIDASI LOGIN
         # ===============================
-        login_url = f"{BASE_URL}/ESS/api/Attendance/ValidasiLogin"
+        login_url = URL_VALIDASI_LOGIN
 
         log(
             f"[{self.alias}] LOGIN REQUEST -> "
@@ -59,7 +59,7 @@ class AuthClient:
         # ===============================
         # 2️⃣ REQUEST TOKEN
         # ===============================
-        token_url = f"{BASE_URL}/ESS/token"
+        token_url = URL_TOKEN
 
         try:
             r = self.session.post(

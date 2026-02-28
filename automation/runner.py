@@ -93,50 +93,43 @@ def is_weekend_or_holiday(dt: datetime) -> tuple[bool, str]:
     return False, ""
 
 
+def _update_notif_state(filepath: str, key: str, value: str) -> bool:
+    """Helper for reading, updating, and writing json notification state. Returns True if updated."""
+    data = {}
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+        except:
+            pass
+
+    if data.get(key) != value:
+        data[key] = value
+        try:
+            with open(filepath, "w") as f:
+                json.dump(data, f)
+        except:
+            pass
+        return True
+    return False
+
+
 def check_tomorrow_holiday(dt: datetime):
     tomorrow = dt.date() + timedelta(days=1)
     if tomorrow in ID_HOLIDAYS:
         notif_path = os.path.join(STATUS_DIR, "holiday_notif.json")
-        data = {}
-        if os.path.exists(notif_path):
-            try:
-                with open(notif_path, "r") as f:
-                    data = json.load(f)
-            except:
-                pass
-        
         today_str = dt.strftime("%Y-%m-%d")
-        if data.get("last_notified") != today_str:
+        if _update_notif_state(notif_path, "last_notified", today_str):
             holiday_name = ID_HOLIDAYS.get(tomorrow)
             send_telegram(f"ℹ️ *Info Libur*\nBesok adalah hari libur: *{holiday_name}*.\nBot tidak akan absen otomatis besok.")
-            data["last_notified"] = today_str
-            try:
-                with open(notif_path, "w") as f:
-                    json.dump(data, f)
-            except:
-                pass
 
 
 def notify_today_holiday(dt: datetime, reason: str, window: str):
     notif_path = os.path.join(STATUS_DIR, "today_holiday_notif.json")
-    data = {}
-    if os.path.exists(notif_path):
-        try:
-            with open(notif_path, "r") as f:
-                data = json.load(f)
-        except:
-            pass
-            
     today_str = dt.strftime("%Y-%m-%d")
     
-    if data.get(window) != today_str:
+    if _update_notif_state(notif_path, window, today_str):
         send_telegram(f"ℹ️ *Info Libur / Akhir Pekan*\nHari ini adalah *{reason}*.\nBot tidak melakukan absen *{window}* otomatis hari ini.")
-        data[window] = today_str
-        try:
-            with open(notif_path, "w") as f:
-                json.dump(data, f)
-        except:
-            pass
 
 
 def notify_tomorrow_status(alias: str, dt_now: datetime, context: str):
@@ -280,7 +273,8 @@ def run():
                 if now_t >= sched_in and in_range(now_t, CHECK_IN_START, CHECK_IN_END):
                     ensure_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen masuk @ {sched['in']}")
-                    check_in(alias)
+                    msg = check_in(alias)
+                    send_telegram(msg)
 
             # ===== CHECK OUT =====
             elif not is_already_checked_out(alias, date_key):
@@ -288,7 +282,8 @@ def run():
                 if now_t >= sched_out and in_range(now_t, CHECK_OUT_START, CHECK_OUT_END):
                     ensure_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen pulang @ {sched['out']}")
-                    check_out(alias)
+                    msg = check_out(alias)
+                    send_telegram(msg)
                     notify_tomorrow_status(alias, now_dt, context='checkout')
 
         except Exception as e:

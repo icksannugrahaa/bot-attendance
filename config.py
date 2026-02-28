@@ -21,6 +21,13 @@ ADMIN_CHAT_IDS = [
 ]
 
 BASE_URL = os.getenv("BASE_URL", "https://starbridges.indocyber.co.id")
+
+# API Endpoints
+URL_VALIDASI_LOGIN = f"{BASE_URL}/ESS/api/Attendance/ValidasiLogin"
+URL_TOKEN = f"{BASE_URL}/ESS/token"
+URL_ABSENCE = f"{BASE_URL}/ESS/api/Attendance/Absence"
+URL_HISTORY = f"{BASE_URL}/ESS/api/Attendance/History"
+
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
 _hash_raw = os.getenv("ADMIN_SERVICE_PASSWORD_HASH", "")

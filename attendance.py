@@ -4,7 +4,6 @@ import random
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from telegram_notifier import send_telegram
 from storage import (
     load_token,
     is_token_expired,
@@ -16,7 +15,7 @@ from storage import (
 )
 from sprint import get_current_sprint
 from logger import log
-from config import BASE_URL, TEST_MODE
+from config import URL_ABSENCE, URL_HISTORY, TEST_MODE
 from bot.users import load_users
 
 try:
@@ -102,6 +101,85 @@ def _now_jakarta():
     return datetime.now(ZoneInfo("Asia/Jakarta"))
 
 
+def _submit_attendance(
+    alias: str, 
+    token: dict, 
+    user: dict, 
+    date_key: str, 
+    time_range: tuple, 
+    log_type: str, 
+    notes: str, 
+    is_test: bool
+) -> str:
+    """Helper private khusus submit payload absen (In / Out)."""
+    now = _now_jakarta()
+    location = random.choice(LOCATION_POOL)
+    log_time = get_or_create_time(
+        alias,
+        date_key,
+        time_range[0],
+        time_range[1]
+    )
+
+    payload = {
+        "UserName": token["loginName"],
+        "LogDate": now.strftime("%m/%d/%Y"),
+        "LogTime": log_time,
+        "LocationID": token.get("LocationID"),
+        "LocationName": token.get("Location"),
+        "LocationAddress": "Gedung BRI Tower II, Jakarta",
+        "Longitude": location["lng"],
+        "Latitude": location["lat"],
+        "LogType": log_type,
+        "GMT": "7",
+    }
+    
+    if log_type == "Start Day":
+        payload["Event"] = ""
+        payload["Notes"] = notes
+
+    action_name = "masuk" if log_type == "Start Day" else "pulang"
+
+    # ===== TEST MODE =====
+    if is_test:
+        msg_suffix = f" | {notes}" if log_type == "Start Day" else ""
+        msg = log(f"[TEST] [{alias}] Simulasi absen {action_name}{msg_suffix}")
+        return msg
+
+    # ===== REAL MODE =====
+    r = requests.post(
+        URL_ABSENCE,
+        data=payload,
+        headers=_headers(token),
+        timeout=15
+    )
+    r.raise_for_status()
+
+    resp = r.json()
+    if resp.get("isSucceed"):
+        msg_suffix = f" | {notes}" if log_type == "Start Day" else ""
+        msg = log(f"[{alias}] Absen {action_name} berhasil{msg_suffix}")
+        return msg
+
+    raise Exception(f"[{alias}] Absen {action_name} gagal: {resp}")
+
+
+def _parse_id_date(raw_date: str) -> str:
+    """Mengubah format tanggal api ke format Indonesia (DD Bulan YYYY)"""
+    id_months = {
+        1: "Januari", 2: "Februari", 3: "Maret", 4: "April", 5: "Mei", 6: "Juni",
+        7: "Juli", 8: "Agustus", 9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+    }
+    try:
+        if "T" in raw_date:
+            dt_obj = datetime.strptime(raw_date.split("T")[0], "%Y-%m-%d")
+        else:
+            dt_obj = datetime.strptime(raw_date.split(" ")[0], "%m/%d/%Y")
+        return f"{dt_obj.day} {id_months[dt_obj.month]} {dt_obj.year}"
+    except (ValueError, TypeError):
+        return raw_date or "-"
+
+
 # ======================
 # CHECK IN
 # ======================
@@ -124,53 +202,30 @@ def check_in(alias: str | None = None) -> str:
     notes = user.get("notes") or f"Working sprint {sprint}"
 
     location = random.choice(LOCATION_POOL)
-    log_time = get_or_create_time(
-        alias,
-        date_key,
-        (7, 15),
-        (7, 35)
-    )
-
-    payload = {
-        "UserName": token["loginName"],
-        "LogDate": now.strftime("%m/%d/%Y"),
-        "LogTime": log_time,
-        "LocationID": token.get("LocationID"),
-        "LocationName": token.get("Location"),
-        "LocationAddress": "Gedung BRI Tower II, Jakarta",
-        "Longitude": location["lng"],
-        "Latitude": location["lat"],
-        "LogType": "Start Day",
-        "Event": "",
-        "Notes": notes,
-        "GMT": "7",
-    }
-
-
-    # ===== TEST MODE =====
+    
+    # Save test mode status internally to save_check_in inside wrapper
     if TEST_MODE:
         save_check_in(alias, date_key)
-        msg = log(f"[TEST] [{alias}] Simulasi absen masuk | {notes}")
-        send_telegram(msg)
-        return msg
-
-    # ===== REAL MODE =====
-    r = requests.post(
-        f"{BASE_URL}/ESS/api/Attendance/Absence",
-        data=payload,
-        headers=_headers(token),
-        timeout=15
-    )
-    r.raise_for_status()
-
-    resp = r.json()
-    if resp.get("isSucceed"):
-        save_check_in(alias, date_key)
-        msg = log(f"[{alias}] Absen masuk berhasil | {notes}")
-        send_telegram(msg)
-        return msg
-
-    raise Exception(f"[{alias}] Absen masuk gagal: {resp}")
+    else:
+        # Optimistic block inside _submit_attendance will test isSucceed
+        pass
+        
+    try:
+        res = _submit_attendance(
+            alias=alias,
+            token=token,
+            user=user,
+            date_key=date_key,
+            time_range=((7, 15), (7, 35)),
+            log_type="Start Day",
+            notes=notes,
+            is_test=TEST_MODE
+        )
+        if not TEST_MODE:
+            save_check_in(alias, date_key)
+        return res
+    except Exception as e:
+        raise e
 
 
 # ======================
@@ -190,51 +245,25 @@ def check_out(alias: str | None = None) -> str:
     if is_already_checked_out(alias, date_key):
         return f"[{alias}] Sudah absen pulang hari ini"
 
-    location = random.choice(LOCATION_POOL)
-    log_time = get_or_create_time(
-        alias,
-        date_key,
-        (16, 30),
-        (17, 30)
-    )
-
-    payload = {
-        "UserName": token["loginName"],
-        "LogDate": now.strftime("%m/%d/%Y"),
-        "LogTime": log_time,
-        "LocationID": token.get("LocationID"),
-        "LocationName": token.get("Location"),
-        "LocationAddress": "Gedung BRI Tower II, Jakarta",
-        "Longitude": location["lng"],
-        "Latitude": location["lat"],
-        "LogType": "End Day",
-        "GMT": "7",
-    }
-
-    # ===== TEST MODE =====
     if TEST_MODE:
         save_check_out(alias, date_key)
-        msg = log(f"[TEST] [{alias}] Simulasi absen pulang")
-        send_telegram(msg)
-        return msg
-
-    # ===== REAL MODE =====
-    r = requests.post(
-        f"{BASE_URL}/ESS/api/Attendance/Absence",
-        data=payload,
-        headers=_headers(token),
-        timeout=15
-    )
-    r.raise_for_status()
-
-    resp = r.json()
-    if resp.get("isSucceed"):
-        save_check_out(alias, date_key)
-        msg = log(f"[{alias}] Absen pulang berhasil")
-        send_telegram(msg)
-        return msg
-
-    raise Exception(f"[{alias}] Absen pulang gagal: {resp}")
+        
+    try:
+        res = _submit_attendance(
+            alias=alias,
+            token=token,
+            user={}, # User tidak dipakai untuk catatan checkout
+            date_key=date_key,
+            time_range=((16, 30), (17, 30)),
+            log_type="End Day",
+            notes="",
+            is_test=TEST_MODE
+        )
+        if not TEST_MODE:
+            save_check_out(alias, date_key)
+        return res
+    except Exception as e:
+        raise e
 
 
 # ======================
@@ -252,7 +281,7 @@ def get_attendance_history(alias: str, date_from: str, date_to: str) -> list:
     }
 
     r = requests.post(
-        f"{BASE_URL}/ESS/api/Attendance/History",
+        URL_HISTORY,
         data=payload,
         headers=_headers(token),
         timeout=15
@@ -288,19 +317,7 @@ def get_history_for_user(alias: str, mode: str | None = None) -> str:
 
     for r in records:
         raw_date = r.get("LogDate", "")
-        # Helper for Indonesian Months
-        id_months = {
-            1: "Januari", 2: "Februari", 3: "Maret", 4: "April", 5: "Mei", 6: "Juni",
-            7: "Juli", 8: "Agustus", 9: "September", 10: "Oktober", 11: "November", 12: "Desember"
-        }
-        try:
-            if "T" in raw_date:
-                dt_obj = datetime.strptime(raw_date.split("T")[0], "%Y-%m-%d")
-            else:
-                dt_obj = datetime.strptime(raw_date.split(" ")[0], "%m/%d/%Y")
-            date_str = f"{dt_obj.day} {id_months[dt_obj.month]} {dt_obj.year}"
-        except (ValueError, TypeError):
-            date_str = raw_date or "-"
+        date_str = _parse_id_date(raw_date)
 
         time = r.get("DisplayTime", "-")
         typ = r.get("LogType", "-")
@@ -339,26 +356,12 @@ def generate_timesheet_excel(alias: str) -> str:
 
     records = get_attendance_history(alias, start, end)
 
-    # Helper for Indonesian Months
-    id_months = {
-        1: "Januari", 2: "Februari", 3: "Maret", 4: "April", 5: "Mei", 6: "Juni",
-        7: "Juli", 8: "Agustus", 9: "September", 10: "Oktober", 11: "November", 12: "Desember"
-    }
-
     # Group records by Date
     grouped_data = {}
     
     for r in records:
         raw_date = r.get("LogDate", "")
-        # convert dates to DD MMMM YYYY (Indonesian)
-        try:
-            if "T" in raw_date:
-                dt_obj = datetime.strptime(raw_date.split("T")[0], "%Y-%m-%d")
-            else:
-                dt_obj = datetime.strptime(raw_date.split(" ")[0], "%m/%d/%Y")
-            date_str = f"{dt_obj.day} {id_months[dt_obj.month]} {dt_obj.year}"
-        except (ValueError, TypeError):
-            date_str = raw_date or "-"
+        date_str = _parse_id_date(raw_date)
 
         if date_str not in grouped_data:
             grouped_data[date_str] = {
