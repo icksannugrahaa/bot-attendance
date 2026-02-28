@@ -48,9 +48,11 @@ async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for alias, u in users.items():
         auto = "ON" if u.get("automation") else "OFF"
         notes = u.get("notes") or "-"
+        pool = u.get("location_pool", "mb").upper()
         msg += (
             f"\n• `{alias}`\n"
             f"  username: `{u['username']}`\n"
+            f"  location: `{pool}`\n"
             f"  auto: `{auto}`\n"
             f"  notes: {notes}\n"
         )

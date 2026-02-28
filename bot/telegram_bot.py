@@ -12,6 +12,7 @@ from bot.handlers import (
     setnotes_cmd,
     users_cmd,
     adduser_cmd,
+    login_cmd,
     masuk_cmd,
     pulang_cmd,
     auto_cmd,
@@ -35,7 +36,8 @@ async def error_handler(update, context):
     if update and update.effective_message:
         try:
             await update.effective_message.reply_text(
-                "⚠️ Terjadi gangguan sementara pada bot.\nSilakan coba lagi."
+                f"⚠️ Terjadi error:\n`{str(err)}`",
+                parse_mode="Markdown"
             )
         except Exception:
             pass
