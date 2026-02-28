@@ -17,42 +17,13 @@ from sprint import get_current_sprint
 from logger import log
 from config import URL_ABSENCE, URL_HISTORY, TEST_MODE
 from bot.users import load_users
-
-try:
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font
-except ImportError:
-    pass
-
+from bot.location import get_random_location
 
 # ======================
 # CONFIG
 # ======================
 
 DEFAULT_USERNAME = "icksan.nugraha"
-
-#Location Kantor Pusat
-# LOCATION_POOL = [
-#     {"lat": -6.2169029, "lng": 106.8145117},
-#     {"lat": -6.2170483, "lng": 106.8144632},
-#     {"lat": -6.2169641, "lng": 106.8147136},
-#     {"lat": -6.2172156, "lng": 106.8144859},
-#     {"lat": -6.2168369, "lng": 106.8144021},
-# ]
-
-#Location Kantor MB
-LOCATION_POOL = [
-    {"lat": -6.24087391, "lng": 106.83660382},
-    {"lat": -6.24095942, "lng": 106.83650713},
-    {"lat": -6.24084277, "lng": 106.83655894},
-    {"lat": -6.24093165, "lng": 106.83662044},
-    {"lat": -6.24098736, "lng": 106.83657512},
-    {"lat": -6.24090124, "lng": 106.83648367},
-    {"lat": -6.24086853, "lng": 106.83653629},
-    {"lat": -6.24094418, "lng": 106.83659173},
-    {"lat": -6.24092384, "lng": 106.83646395},
-    {"lat": -6.24087962, "lng": 106.83651548},
-]
 
 # ======================
 # HELPER
@@ -113,7 +84,13 @@ def _submit_attendance(
 ) -> str:
     """Helper private khusus submit payload absen (In / Out)."""
     now = _now_jakarta()
-    location = random.choice(LOCATION_POOL)
+    
+    # 1. Tentukan pool location dari preferensi user
+    pool_type = user.get("location_pool", "mb")
+    
+    # 2. Ambil random location baru
+    location = get_random_location(pool_type)
+    
     log_time = get_or_create_time(
         alias,
         date_key,
@@ -200,8 +177,6 @@ def check_in(alias: str | None = None) -> str:
 
     sprint = get_current_sprint(now.date())
     notes = user.get("notes") or f"Working sprint {sprint}"
-
-    location = random.choice(LOCATION_POOL)
     
     # Save test mode status internally to save_check_in inside wrapper
     if TEST_MODE:
@@ -248,11 +223,14 @@ def check_out(alias: str | None = None) -> str:
     if TEST_MODE:
         save_check_out(alias, date_key)
         
+    # Perlu load user untuk menarik properti location_pool
+    user = _get_user(alias)
+        
     try:
         res = _submit_attendance(
             alias=alias,
             token=token,
-            user={}, # User tidak dipakai untuk catatan checkout
+            user=user,
             date_key=date_key,
             time_range=((16, 30), (17, 30)),
             log_type="End Day",

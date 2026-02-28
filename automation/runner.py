@@ -17,7 +17,6 @@ from storage import (
     is_already_checked_out
 )
 from logger import log
-from config import TEST_MODE
 import json
 import os
 from telegram_notifier import send_telegram

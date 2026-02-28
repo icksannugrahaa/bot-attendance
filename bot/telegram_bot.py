@@ -12,12 +12,12 @@ from bot.handlers import (
     setnotes_cmd,
     users_cmd,
     adduser_cmd,
-    login_cmd,
     masuk_cmd,
     pulang_cmd,
     auto_cmd,
     history_cmd,
-    clearnotes_cmd
+    clearnotes_cmd,
+    setlocation_cmd
 )
 from config import TELEGRAM_CONFIG
 from logger import log
@@ -70,6 +70,7 @@ def main():
     app.add_handler(CommandHandler("history", history_cmd))
     app.add_handler(CommandHandler("setnotes", setnotes_cmd))
     app.add_handler(CommandHandler("clearnotes", clearnotes_cmd))
+    app.add_handler(CommandHandler("setlocation", setlocation_cmd))
 
     # ===== ADMIN COMMANDS =====
     app.add_handler(CommandHandler("service", service_cmd))

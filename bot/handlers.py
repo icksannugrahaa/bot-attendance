@@ -7,6 +7,7 @@ from bot.users import (
     get_user,
     set_automation,
     set_notes,
+    set_location_pool,
     load_users
 )
 from auth import AuthClient
@@ -229,6 +230,40 @@ async def clearnotes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(
             "Format:\n/clearnotes <alias>"
         )
+
+
+# ======================
+# LOCATION SETTINGS
+# ======================
+
+async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return await deny(update)
+
+    try:
+        parts = update.message.text.split(maxsplit=2)
+        if len(parts) != 3:
+            raise ValueError()
+
+        alias = parts[1]
+        pool = parts[2].lower()
+
+        if pool not in ("mb", "kanpus"):
+            return await update.effective_message.reply_text("❌ Location pool harus 'mb' atau 'kanpus'")
+
+        if not set_location_pool(alias, pool):
+            return await update.effective_message.reply_text("❌ User tidak ditemukan")
+
+        await update.effective_message.reply_text(
+            f"📍 Location pool `{alias}` diubah ke: *{pool.upper()}*",
+            parse_mode="Markdown"
+        )
+
+    except ValueError:
+        await update.effective_message.reply_text(
+            "Format:\n/setlocation <alias> <mb|kanpus>"
+        )
+
 
 
 # ======================

@@ -24,7 +24,8 @@ def add_user(alias: str, username: str, password: str, imei: str):
         "password": password,
         "imei": imei,
         "active": True,
-        "automation": False
+        "automation": False,
+        "location_pool": "mb"
     }
     save_users(users)
 
@@ -51,5 +52,15 @@ def set_notes(alias: str, notes: str | None):
         return False
 
     users[alias]["notes"] = notes
+    save_users(users)
+    return True
+
+
+def set_location_pool(alias: str, pool_name: str) -> bool:
+    users = load_users()
+    if alias not in users:
+        return False
+
+    users[alias]["location_pool"] = pool_name.lower()
     save_users(users)
     return True
