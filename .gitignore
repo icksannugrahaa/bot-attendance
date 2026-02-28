@@ -10,5 +10,8 @@ status/
 
 automation/__pycache__/
 bot/__pycache__/
+logs/attendance.log
+logs/cron.log
+logs/telegram.log
 
 *.exe

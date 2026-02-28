@@ -117,6 +117,28 @@ def check_tomorrow_holiday(dt: datetime):
                 pass
 
 
+def notify_today_holiday(dt: datetime, reason: str, window: str):
+    notif_path = os.path.join(STATUS_DIR, "today_holiday_notif.json")
+    data = {}
+    if os.path.exists(notif_path):
+        try:
+            with open(notif_path, "r") as f:
+                data = json.load(f)
+        except:
+            pass
+            
+    today_str = dt.strftime("%Y-%m-%d")
+    
+    if data.get(window) != today_str:
+        send_telegram(f"ℹ️ *Info Libur / Akhir Pekan*\nHari ini adalah *{reason}*.\nBot tidak melakukan absen *{window}* otomatis hari ini.")
+        data[window] = today_str
+        try:
+            with open(notif_path, "w") as f:
+                json.dump(data, f)
+        except:
+            pass
+
+
 def notify_tomorrow_status(alias: str, dt_now: datetime, context: str):
     """
     Kirim notifikasi ke Telegram mengenai status bot untuk besok.
@@ -235,6 +257,10 @@ def run():
     is_day_off, reason = is_weekend_or_holiday(now_dt)
     if is_day_off:
         log(f"[AUTO] Skip automation hari ini: {reason}")
+        if in_range(now_t, CHECK_IN_START, CHECK_IN_END):
+            notify_today_holiday(now_dt, reason, "Masuk")
+        elif in_range(now_t, CHECK_OUT_START, CHECK_OUT_END):
+            notify_today_holiday(now_dt, reason, "Pulang")
         return
 
     users = load_users()
