@@ -18,7 +18,8 @@ from bot.handlers import (
     auto_cmd,
     history_cmd,
     clearnotes_cmd,
-    setlocation_cmd
+    setlocation_cmd,
+    register_imei_cmd
 )
 from config import TELEGRAM_CONFIG
 from logger import log
@@ -73,6 +74,7 @@ def main():
     app.add_handler(CommandHandler("setnotes", setnotes_cmd))
     app.add_handler(CommandHandler("clearnotes", clearnotes_cmd))
     app.add_handler(CommandHandler("setlocation", setlocation_cmd))
+    app.add_handler(CommandHandler("register_imei", register_imei_cmd))
 
     # ===== ADMIN COMMANDS =====
     app.add_handler(CommandHandler("service", service_cmd))

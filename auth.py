@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from storage import save_token
 from logger import log
-from config import URL_VALIDASI_LOGIN, URL_TOKEN
+from config import URL_VALIDASI_LOGIN, URL_TOKEN, URL_REGISTER_IMEI
 
 
 class AuthClient:
@@ -120,4 +120,42 @@ class AuthClient:
         save_token(self.alias, token)
 
         log(f"[{self.alias}] Login & token berhasil disimpan")
+        return True
+
+    def register_imei(self):
+        # ===============================
+        # REGISTER IMEI
+        # ===============================
+        register_url = URL_REGISTER_IMEI
+
+        log(
+            f"[{self.alias}] REGISTER IMEI REQUEST -> "
+            f"username={self.username}, "
+            f"imei={self.imei}"
+        )
+
+        try:
+            r = self.session.post(
+                register_url,
+                data={
+                    "username": self.username,
+                    "password": self.password,
+                    "IMEI": self.imei
+                },
+                timeout=15
+            )
+            r.raise_for_status()
+        except Exception as e:
+            raise Exception(f"Register IMEI request failed: {e}")
+
+        try:
+            register_data = r.json()
+        except Exception:
+            raise Exception(f"Register IMEI response bukan JSON: {r.text}")
+
+        if not register_data.get("isSucceed"):
+            message = register_data.get("message", "Register IMEI failed")
+            raise Exception(message)
+
+        log(f"[{self.alias}] Register IMEI berhasil")
         return True

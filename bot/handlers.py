@@ -103,6 +103,31 @@ async def login_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(f"❌ Login gagal: {e}")
 
 
+async def register_imei_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        return await deny(update)
+
+    try:
+        _, alias = update.message.text.split()
+        user = get_user(alias)
+        if not user:
+            return await update.effective_message.reply_text("❌ User tidak ditemukan")
+
+        AuthClient(
+            alias=alias,
+            username=user["username"],
+            password=user["password"],
+            imei=user["imei"]
+        ).register_imei()
+
+        await update.effective_message.reply_text(f"✅ IMEI Berhasil Didaftarkan untuk `{alias}`", parse_mode="Markdown")
+
+    except ValueError:
+        await update.effective_message.reply_text("Format:\n/register_imei <alias>")
+    except Exception as e:
+        await update.effective_message.reply_text(f"❌ Register IMEI gagal: {e}")
+
+
 # ======================
 # ATTENDANCE
 # ======================
