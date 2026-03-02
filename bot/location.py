@@ -17,15 +17,15 @@ def _meters_to_lng_deg(latitude: float) -> float:
 def get_random_location(pool_type: str) -> dict:
     """
     Returns a random {lat, lng} within a 50m radius of the requested pool center.
-    Default fallback is 'mb'.
+    Default fallback is 'kanpus'.
     """
     pool_type = pool_type.lower()
     
-    if pool_type == "kanpus":
-        center_lat, center_lng = KANPUS_CENTER
-    else:
-        # Default fallback to "mb"
+    if pool_type == "mb":
         center_lat, center_lng = MB_CENTER
+    else:
+        # Default fallback to "kanpus"
+        center_lat, center_lng = KANPUS_CENTER
 
     # Generate random distance up to 50m
     max_radius_m = 50.0

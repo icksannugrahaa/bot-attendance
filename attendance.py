@@ -86,7 +86,7 @@ def _submit_attendance(
     now = _now_jakarta()
     
     # 1. Tentukan pool location dari preferensi user
-    pool_type = user.get("location_pool", "mb")
+    pool_type = user.get("location_pool", "kanpus")
     
     # 2. Ambil random location baru
     location = get_random_location(pool_type)

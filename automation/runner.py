@@ -221,18 +221,25 @@ def ensure_schedule(alias: str, date_key: str) -> dict:
     return sched
 
 
-def ensure_login(alias: str, user: dict):
-    token = load_token(alias)
-    if token and not is_token_expired(token):
-        return
-
-    log(f"[AUTO] [{alias}] Token expired / tidak ada → login")
-    AuthClient(
-        alias=alias,
-        username=user["username"],
-        password=user["password"],
-        imei=user["imei"]
-    ).login_and_get_token()
+def force_login(alias: str, user: dict, max_retries: int = 3):
+    import time
+    for attempt in range(1, max_retries + 1):
+        try:
+            log(f"[AUTO] [{alias}] Memaksa login sebelum absen (Attempt {attempt}/{max_retries})")
+            AuthClient(
+                alias=alias,
+                username=user["username"],
+                password=user["password"],
+                imei=user["imei"]
+            ).login_and_get_token()
+            return  # Login berhasil, keluar dari loop
+        except Exception as e:
+            if attempt < max_retries:
+                log(f"[AUTO] [{alias}] Login gagal: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+            else:
+                log(f"[AUTO] [{alias}] Login gagal setelah {max_retries} percobaan: {e}")
+                raise e # Lempar error agar attendance tidak dieksekusi
 
 
 # ======================
@@ -270,7 +277,7 @@ def run():
             if not is_already_checked_in(alias, date_key):
                 sched_in = time.fromisoformat(sched["in"])
                 if now_t >= sched_in and in_range(now_t, CHECK_IN_START, CHECK_IN_END):
-                    ensure_login(alias, user)
+                    force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen masuk @ {sched['in']}")
                     msg = check_in(alias)
                     send_telegram(msg)
@@ -279,7 +286,7 @@ def run():
             elif not is_already_checked_out(alias, date_key):
                 sched_out = time.fromisoformat(sched["out"])
                 if now_t >= sched_out and in_range(now_t, CHECK_OUT_START, CHECK_OUT_END):
-                    ensure_login(alias, user)
+                    force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen pulang @ {sched['out']}")
                     msg = check_out(alias)
                     send_telegram(msg)

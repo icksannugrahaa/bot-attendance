@@ -25,7 +25,7 @@ def add_user(alias: str, username: str, password: str, imei: str):
         "imei": imei,
         "active": True,
         "automation": False,
-        "location_pool": "mb"
+        "location_pool": "kanpus"
     }
     save_users(users)
 
