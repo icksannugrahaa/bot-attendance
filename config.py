@@ -13,7 +13,9 @@ EMAIL_CONFIG = {
 
 TELEGRAM_CONFIG = {
     "bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
-    "chat_id": os.getenv("TELEGRAM_CHAT_ID", "")
+    "chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
+    "api_id": os.getenv("TELEGRAM_API_ID", ""),
+    "api_hash": os.getenv("TELEGRAM_API_HASH", "")
 }
 
 ADMIN_CHAT_IDS = [

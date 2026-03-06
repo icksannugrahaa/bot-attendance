@@ -14,9 +14,23 @@ FAILED_AUTH = {}          # chat_id -> [count, last_ts]
 MAX_FAIL = 5
 BLOCK_SECONDS = 300       # 5 menit
 
+from bot.users import get_user
 
-def is_admin(update: Update) -> bool:
-    return update.effective_chat and str(update.effective_chat.id) in ADMIN_CHAT_IDS
+def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
+    chat_id = str(update.effective_chat.id)
+    # 1. Global Admin Check
+    if chat_id in ADMIN_CHAT_IDS:
+        return True
+        
+    # 2. Personal Bot Check
+    if context:
+        bot_alias = context.bot_data.get("alias")
+        if bot_alias and bot_alias != "GLOBAL":
+            user_data = get_user(bot_alias)
+            if user_data and user_data.get("chat_id") == chat_id:
+                return True
+                
+    return False
 
 
 def is_blocked(chat_id: int) -> bool:
@@ -45,7 +59,7 @@ async def deny(update: Update):
 # ======================
 
 async def service_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     if not update.message or not update.message.text:
@@ -99,7 +113,7 @@ async def service_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ======================
 
 async def logs_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     if not update.message or not update.message.text:

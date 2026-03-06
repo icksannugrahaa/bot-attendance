@@ -8,8 +8,10 @@ from bot.users import (
     set_automation,
     set_notes,
     set_location_pool,
+    set_imei,
     load_users
 )
+import device_utils
 from auth import AuthClient
 from attendance import (
     check_in,
@@ -24,8 +26,21 @@ from config import ADMIN_CHAT_IDS
 # GUARD
 # ======================
 
-def is_admin(update: Update) -> bool:
-    return str(update.effective_chat.id) in ADMIN_CHAT_IDS
+def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE = None) -> bool:
+    chat_id = str(update.effective_chat.id)
+    # 1. Global Admin Check
+    if chat_id in ADMIN_CHAT_IDS:
+        return True
+        
+    # 2. Personal Bot Check
+    if context:
+        bot_alias = context.bot_data.get("alias")
+        if bot_alias and bot_alias != "GLOBAL":
+            user_data = get_user(bot_alias)
+            if user_data and user_data.get("chat_id") == chat_id:
+                return True
+                
+    return False
 
 
 def deny(update: Update):
@@ -33,11 +48,45 @@ def deny(update: Update):
 
 
 # ======================
+# COMMAND HANDLERS
+# ======================
+
+async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    bot_alias = context.bot_data.get("alias")
+    
+    # Jangan proses '/start' di GLOBAL bot untuk auto-link
+    if not bot_alias or bot_alias == "GLOBAL":
+        await update.effective_message.reply_text("👋 Selamat datang di Indocyber Attendance Bot.")
+        return
+
+    users = list_users()
+    user_data = users.get(bot_alias)
+
+    if user_data:
+        chat_id = str(update.effective_chat.id)
+        # Jika chat_id belum ada, otomatis daftarkan.
+        if not user_data.get("chat_id"):
+            from bot.users import load_users, save_users
+            all_users = load_users()
+            all_users[bot_alias]["chat_id"] = chat_id
+            save_users(all_users)
+            await update.effective_message.reply_text(
+                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <mb/kanpus>. \n4.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
+                parse_mode="Markdown"
+            )
+            from logger import log
+            log(f"[{bot_alias}] Chat ID ({chat_id}) berhasil di-link via /start")
+        else:
+             await update.effective_message.reply_text("Bot ini sudah terhubung.")
+    else:
+        await update.effective_message.reply_text("User tidak ditemukan.")
+
+# ======================
 # USERS
 # ======================
 
 async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     users = list_users()
@@ -60,17 +109,63 @@ async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(msg, parse_mode="Markdown")
 
 
+import os
+import sys
+from bot.botfather import create_new_bot
+
 async def adduser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
-        _, alias, username, password, imei = update.message.text.split()
-        add_user(alias, username, password, imei)
-        await update.effective_message.reply_text(f"✅ User `{alias}` ditambahkan", parse_mode="Markdown")
+        parts = update.message.text.split()
+        if len(parts) == 5:
+            _, alias, username, password, imei = parts
+            
+            await update.effective_message.reply_text(f"⏳ Membuat bot Telegram personal untuk `{alias}` di @BotFather...", parse_mode="Markdown")
+            try:
+                bot_info = await create_new_bot(alias)
+                bot_token = bot_info["token"]
+                bot_username = bot_info["username"]
+                
+                # Chat ID kosong dulu, akan diisi saat user klik /start di bot barunya
+                add_user(alias, username, password, imei, bot_token, "")
+                
+                msg = (
+                    f"✅ User {alias} ditambahkan!\n\n"
+                    f"🤖 Bot Personal: @{bot_username}\n"
+                    f"Silahkan minta user untuk mencari username bot tersebut di Telegram dan klik tombol START agar otomatis terhubung.\n\n"
+                    f"🔄 Bot System is restarting automatically to apply new configuration..."
+                )
+                await update.effective_message.reply_text(msg)
+                
+                # Restart bot otomatis melalui graceful shutdown
+                import bot.state as tb
+                tb.RESTART_FLAG = True
+                if tb.STOP_EVENT:
+                    tb.STOP_EVENT.set()
+                
+            except Exception as e:
+                add_user(alias, username, password, imei)
+                await update.effective_message.reply_text(f"⚠️ User ditambahkan, tapi gagal membuat bot otomatis.\nError Info: {str(e)}\n\nFormat manual: /adduser <alias> <user> <pass> <imei> [token chat_id]")
+
+
+        elif len(parts) == 7:
+            _, alias, username, password, imei, bot_token, chat_id = parts
+            add_user(alias, username, password, imei, bot_token, chat_id)
+            await update.effective_message.reply_text(f"✅ User `{alias}` ditambahkan beserta bot personal manual\n🔄 *Bot System is restarting otomatis*...", parse_mode="Markdown")
+            
+            # Restart otomatis
+            import bot.state as tb
+            tb.RESTART_FLAG = True
+            if tb.STOP_EVENT:
+                tb.STOP_EVENT.set()
+        else:
+            raise ValueError()
+
     except ValueError:
         await update.effective_message.reply_text(
-            "Format:\n/adduser <alias> <username> <password> <imei>"
+            "Format:\n/adduser <alias> <username> <password> <imei>\nAtau:\n/adduser <alias> <username> <password> <imei> <bot_token> <chat_id>"
         )
 
 
@@ -79,7 +174,7 @@ async def adduser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ======================
 
 async def login_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -104,7 +199,7 @@ async def login_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def register_imei_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -129,11 +224,36 @@ async def register_imei_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ======================
+# DEVICE ID
+# ======================
+
+async def gendeviceid_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update, context):
+        return await deny(update)
+
+    try:
+        parts = update.message.text.split()
+        new_imei = device_utils.generate_device_id()
+
+        if len(parts) > 1:
+            alias = parts[1]
+            if set_imei(alias, new_imei):
+                await update.effective_message.reply_text(f"✅ Device ID (IMEI) baru untuk `{alias}` berhasil dibuat dan disimpan:\n`{new_imei}`\n\nSilahkan jalankan `/register_imei {alias}` untuk mendaftarkannya ke server.", parse_mode="Markdown")
+            else:
+                await update.effective_message.reply_text("❌ User tidak ditemukan. Gunakan `/gendeviceid` tanpa alias untuk generate saja.", parse_mode="Markdown")
+        else:
+            await update.effective_message.reply_text(f"✅ Generated Device ID (Android):\n`{new_imei}`", parse_mode="Markdown")
+            
+    except Exception as e:
+        await update.effective_message.reply_text(f"❌ Gagal generate device id: {e}")
+
+
+# ======================
 # ATTENDANCE
 # ======================
 
 async def masuk_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -146,7 +266,7 @@ async def masuk_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def pulang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -163,7 +283,7 @@ async def pulang_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ======================
 
 async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     parts = update.message.text.split()
@@ -220,7 +340,7 @@ async def history_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ======================
 
 async def setnotes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -240,7 +360,7 @@ async def setnotes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def clearnotes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -264,7 +384,7 @@ async def clearnotes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ======================
 
 async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         return await deny(update)
 
     try:
@@ -298,7 +418,7 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ======================
 
 async def auto_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_admin(update):
+    if not is_admin(update, context):
         await update.effective_message.reply_text("❌ Akses ditolak")
         return
 
