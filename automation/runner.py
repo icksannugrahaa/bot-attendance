@@ -50,8 +50,8 @@ def acquire_lock():
             notify_error(f"Coba absen lagi nanti\nRunner masih berjalan, skip.")
             sys.exit(0)
 
-def notify_error(msg):
-    send_telegram(f"🚨 *Automation Error*\n{msg}")
+def notify_error(msg, alias=None):
+    send_telegram(f"🚨 *Automation Error*\n{msg}", alias)
 
 
 # ======================
@@ -128,7 +128,7 @@ def notify_today_holiday(dt: datetime, reason: str, window: str):
     today_str = dt.strftime("%Y-%m-%d")
     
     if _update_notif_state(notif_path, window, today_str):
-        send_telegram(f"ℹ️ *Info Libur / Akhir Pekan*\nHari ini adalah *{reason}*.\nBot tidak melakukan absen *{window}* otomatis hari ini.")
+        send_telegram(f"ℹ️ *Info Libur / Akhir Pekan*\nHari ini adalah *{reason}*.\nBot tidak melakukan absen *{window}* otomatis hari ini.", None)
 
 
 def notify_tomorrow_status(alias: str, dt_now: datetime, context: str):
@@ -153,7 +153,7 @@ def notify_tomorrow_status(alias: str, dt_now: datetime, context: str):
         else:
             return  # Tidak perlu spam saat checkout jika besok hari biasa
             
-    send_telegram(msg)
+    send_telegram(msg, alias)
 
 
 
@@ -280,7 +280,7 @@ def run():
                     force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen masuk @ {sched['in']}")
                     msg = check_in(alias)
-                    send_telegram(msg)
+                    send_telegram(msg, alias)
 
             # ===== CHECK OUT =====
             elif not is_already_checked_out(alias, date_key):
@@ -289,12 +289,12 @@ def run():
                     force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen pulang @ {sched['out']}")
                     msg = check_out(alias)
-                    send_telegram(msg)
+                    send_telegram(msg, alias)
                     notify_tomorrow_status(alias, now_dt, context='checkout')
 
         except Exception as e:
             log(f"[AUTO] [{alias}] ERROR: {e}")
-            notify_error(f"{alias}\n{e}")
+            notify_error(f"{alias}\n{e}", alias)
 
     log("[AUTO] Runner tick selesai")
 
