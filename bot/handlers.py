@@ -71,7 +71,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             all_users[bot_alias]["chat_id"] = chat_id
             save_users(all_users)
             await update.effective_message.reply_text(
-                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <location_name>. (Gunakan /addlocation untuk menambah lokasi baru) \n4.Mengelola waktu absen acak dengan /set_checkin_timerange <alias> <start> <end> dan /set_checkout_timerange <alias> <start> <end>.\n5.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
+                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Melihat daftar lokasi dengan /location_list dan mengubah location absen dengan /setlocation <alias> <nama_atau_id_lokasi>. (Gunakan /addlocation untuk menambah lokasi baru) \n4.Mengelola waktu absen acak dengan /set_checkin_timerange <alias> <start> <end> dan /set_checkout_timerange <alias> <start> <end>.\n5.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
                 parse_mode="Markdown"
             )
             from logger import log
@@ -383,6 +383,41 @@ async def clearnotes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # LOCATION SETTINGS
 # ======================
 
+async def location_list_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update, context):
+        return await deny(update)
+
+    from bot.location import load_locations
+    locations = load_locations()
+    if not locations:
+        return await update.effective_message.reply_text("Belum ada lokasi tersimpan.")
+        
+    sorted_keys = sorted(locations.keys())
+    
+    # Set default location to "kanpus" for users who might be missing the field
+    from bot.users import load_users
+    users = load_users()
+    pool_counts = {k: 0 for k in sorted_keys}
+    for u in users.values():
+        pool = u.get("location_pool", "kanpus").lower()
+        if pool in pool_counts:
+            pool_counts[pool] += 1
+    
+    msg = "📍 *Daftar Lokasi*\n\n"
+    for idx, key in enumerate(sorted_keys):
+        lat, lng = locations[key]
+        users_count = pool_counts[key]
+        gmaps_link = f"https://www.google.com/maps?q={lat},{lng}"
+        
+        msg += f"*{idx + 1}. {key.upper()}*\n"
+        msg += f"   • Lat/Lng: `{lat}, {lng}`\n"
+        msg += f"   • Total User: `{users_count}` user\n"
+        msg += f"   • [Buka di Google Maps]({gmaps_link})\n\n"
+        
+    msg += "----- \n📌 _Gunakan_ `/setlocation <alias> <ID>` _atau_ `/setlocation <alias> <nama>`"
+    await update.effective_message.reply_text(msg, parse_mode="Markdown", disable_web_page_preview=True)
+
+
 async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update, context):
         return await deny(update)
@@ -397,10 +432,17 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         from bot.location import load_locations
         available_locations = load_locations()
+        sorted_keys = sorted(available_locations.keys())
+
+        # Support selecting by ID
+        if pool.isdigit():
+            idx = int(pool) - 1
+            if 0 <= idx < len(sorted_keys):
+                pool = sorted_keys[idx]
 
         if pool not in available_locations:
-            loc_list = ", ".join([f"'{k}'" for k in available_locations.keys()])
-            return await update.effective_message.reply_text(f"❌ Location pool tidak valid.\nTersedia: {loc_list}\nGunakan /addlocation untuk menambahkan.")
+            loc_list = ", ".join([f"'{k}'" for k in sorted_keys])
+            return await update.effective_message.reply_text(f"❌ Location pool tidak valid.\nTersedia: {loc_list}\nGunakan /location_list atau /addlocation.")
 
         if not set_location_pool(alias, pool):
             return await update.effective_message.reply_text("❌ User tidak ditemukan")
@@ -411,10 +453,8 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except ValueError:
-        from bot.location import load_locations
-        loc_list = "|".join([k for k in load_locations().keys()])
         await update.effective_message.reply_text(
-            f"Format:\n/setlocation <alias> <{loc_list}>"
+            "Format:\n/setlocation <alias> <name_or_id>\nContoh:\n/setlocation icksan 1\n/setlocation icksan mb"
         )
 
 
