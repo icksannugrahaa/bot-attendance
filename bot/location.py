@@ -4,6 +4,7 @@ import random
 # Base configurations
 MB_CENTER = (-6.240723226162096, 106.8365991740012)
 KANPUS_CENTER = (-6.216556144511367, 106.81407082204778)
+HOTEL_MANHATAN_CENTER = (-6.225336271972221, 106.83129136781952)
 
 # 1 degree of latitude is ~111km (111139 meters)
 LAT_METER_DEG = 1.0 / 111139.0
@@ -23,6 +24,8 @@ def get_random_location(pool_type: str) -> dict:
     
     if pool_type == "mb":
         center_lat, center_lng = MB_CENTER
+    elif pool_type == "hotel_manhatan":
+        center_lat, center_lng = HOTEL_MANHATAN_CENTER
     else:
         # Default fallback to "kanpus"
         center_lat, center_lng = KANPUS_CENTER

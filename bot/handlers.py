@@ -71,7 +71,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             all_users[bot_alias]["chat_id"] = chat_id
             save_users(all_users)
             await update.effective_message.reply_text(
-                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <mb/kanpus>. \n4.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
+                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <mb/kanpus/hotel_manhatan>. \n4.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
                 parse_mode="Markdown"
             )
             from logger import log
@@ -395,8 +395,8 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         alias = parts[1]
         pool = parts[2].lower()
 
-        if pool not in ("mb", "kanpus"):
-            return await update.effective_message.reply_text("❌ Location pool harus 'mb' atau 'kanpus'")
+        if pool not in ("mb", "kanpus", "hotel_manhatan"):
+            return await update.effective_message.reply_text("❌ Location pool harus 'mb', 'kanpus', atau 'hotel_manhatan'")
 
         if not set_location_pool(alias, pool):
             return await update.effective_message.reply_text("❌ User tidak ditemukan")
@@ -408,7 +408,7 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except ValueError:
         await update.effective_message.reply_text(
-            "Format:\n/setlocation <alias> <mb|kanpus>"
+            "Format:\n/setlocation <alias> <mb|kanpus|hotel_manhatan>"
         )
 
 
