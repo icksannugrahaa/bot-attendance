@@ -272,6 +272,7 @@ def run():
 
         try:
             sched = ensure_schedule(alias, date_key)
+            send_telegram(f"[AUTO] [{alias}] Jadwal hari ini IN={sched['in']} OUT={sched['out']} ON {user.get('location_pool')}", alias)
 
             # ===== CHECK IN =====
             if not is_already_checked_in(alias, date_key):

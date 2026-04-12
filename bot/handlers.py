@@ -98,10 +98,14 @@ async def users_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         auto = "ON" if u.get("automation") else "OFF"
         notes = u.get("notes") or "-"
         pool = u.get("location_pool", "kanpus").upper()
+        checkin_time = u.get("checkin_timerange") or "07:15-07:35"
+        checkout_time = u.get("checkout_timerange") or "16:30-17:30"
         msg += (
             f"\n• `{alias}`\n"
             f"  username: `{u['username']}`\n"
             f"  location: `{pool}`\n"
+            f"  check-in: `{checkin_time}`\n"
+            f"  check-out: `{checkout_time}`\n"
             f"  auto: `{auto}`\n"
             f"  notes: {notes}\n"
         )
