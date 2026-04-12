@@ -29,7 +29,8 @@ from bot.handlers import (
     location_list_cmd,
     set_checkin_timerange_cmd,
     set_checkout_timerange_cmd,
-    start_cmd
+    start_cmd,
+    menu_cmd
 )
 from bot.users import load_users
 from config import TELEGRAM_CONFIG
@@ -70,6 +71,7 @@ def build_bot_app(token: str, alias: str = "GLOBAL"):
 
     # ===== COMMANDS =====
     app.add_handler(CommandHandler("start", start_cmd))
+    app.add_handler(CommandHandler("menu", menu_cmd))
     app.add_handler(CommandHandler("list_users", users_cmd))
     app.add_handler(CommandHandler("add_user", adduser_cmd))
     app.add_handler(CommandHandler("login", login_cmd))

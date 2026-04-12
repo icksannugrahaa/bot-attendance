@@ -71,7 +71,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             all_users[bot_alias]["chat_id"] = chat_id
             save_users(all_users)
             await update.effective_message.reply_text(
-                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Melihat daftar lokasi dengan /location_list dan mengubah location absen dengan /setlocation <alias> <nama_atau_id_lokasi>. (Gunakan /addlocation untuk menambah lokasi baru) \n4.Mengelola waktu absen acak dengan /set_checkin_timerange <alias> <start> <end> dan /set_checkout_timerange <alias> <start> <end>.\n5.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
+                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\nKetik /menu untuk melihat semua perintah yang tersedia.", 
                 parse_mode="Markdown"
             )
             from logger import log
@@ -80,6 +80,36 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
              await update.effective_message.reply_text("Bot ini sudah terhubung.")
     else:
         await update.effective_message.reply_text("User tidak ditemukan.")
+
+async def menu_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = (
+        "🤖 *Menu Utama*\n\n"
+        "🏃‍♂️ *Attendance*\n"
+        "• `/checkin [alias]` - Absen masuk\n"
+        "• `/checkout [alias]` - Absen pulang\n"
+        "• `/list_history [alias] [week/month/timesheet]` - Cek riwayat/Excel\n\n"
+        "⚙️ *Konfigurasi*\n"
+        "• `/set_auto on/off [alias]` - Set automasi harian\n"
+        "• `/set_checkin_timerange [alias] HH:MM HH:MM` - Waktu acak masuk\n"
+        "• `/set_checkout_timerange [alias] HH:MM HH:MM` - Waktu acak pulang\n"
+        "• `/set_notes [alias] [notes]` - Custom notes absen\n"
+        "• `/clear_notes [alias]` - Reset notes absen\n"
+        "• `/set_location [alias] [ID/nama]` - Set lokasi default\n\n"
+        "📍 *Lokasi*\n"
+        "• `/list_location` - Lihat daftar semua lokasi\n"
+        "• `/add_location [nama] [lat,lng]` - Tambah lokasi baru\n\n"
+        "👥 *User Management*\n"
+        "• `/list_users` - Lihat user terdaftar\n"
+        "• `/add_user <alias> <user> <pass> <imei>` - Tambah user\n"
+        "• `/login [alias]` - Login paksa/refresh token\n"
+        "• `/register_imei [alias]` - Daftarkan IMEI saat ini\n"
+        "• `/generate_deviceid [alias]` - Generate IMEI baru\n\n"
+        "🔧 *System*\n"
+        "• `/service` - Restart/Stop background service\n"
+        "• `/logs` - Lihat log aktivitas terbaru\n"
+    )
+    await update.effective_message.reply_text(msg, parse_mode="Markdown")
+
 
 # ======================
 # USERS
