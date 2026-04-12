@@ -26,6 +26,8 @@ from bot.handlers import (
     register_imei_cmd,
     gendeviceid_cmd,
     addlocation_cmd,
+    set_checkin_timerange_cmd,
+    set_checkout_timerange_cmd,
     start_cmd
 )
 from bot.users import load_users
@@ -78,6 +80,8 @@ def build_bot_app(token: str, alias: str = "GLOBAL"):
     app.add_handler(CommandHandler("clearnotes", clearnotes_cmd))
     app.add_handler(CommandHandler("setlocation", setlocation_cmd))
     app.add_handler(CommandHandler("addlocation", addlocation_cmd))
+    app.add_handler(CommandHandler("set_checkin_timerange", set_checkin_timerange_cmd))
+    app.add_handler(CommandHandler("set_checkout_timerange", set_checkout_timerange_cmd))
     app.add_handler(CommandHandler("register_imei", register_imei_cmd))
     app.add_handler(CommandHandler("gendeviceid", gendeviceid_cmd))
 

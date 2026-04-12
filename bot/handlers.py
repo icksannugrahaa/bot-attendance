@@ -71,7 +71,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             all_users[bot_alias]["chat_id"] = chat_id
             save_users(all_users)
             await update.effective_message.reply_text(
-                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <location_name>. (Gunakan /addlocation untuk menambah lokasi baru) \n4.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
+                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <location_name>. (Gunakan /addlocation untuk menambah lokasi baru) \n4.Mengelola waktu absen acak dengan /set_checkin_timerange <alias> <start> <end> dan /set_checkout_timerange <alias> <start> <end>.\n5.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
                 parse_mode="Markdown"
             )
             from logger import log
@@ -451,6 +451,64 @@ async def addlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Format:\n/addlocation <location_name> <lat,lng>\nContoh:\n/addlocation hotel_manhatan -6.2253,106.8312"
         )
 
+
+
+# ======================
+# TIME RANGES
+# ======================
+
+async def set_checkin_timerange_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update, context):
+        return await deny(update)
+
+    try:
+        parts = update.message.text.split()
+        if len(parts) != 4:
+            raise ValueError()
+
+        alias = parts[1]
+        start_time = parts[2]
+        end_time = parts[3]
+
+        from bot.users import set_checkin_timerange
+        if not set_checkin_timerange(alias, start_time, end_time):
+            return await update.effective_message.reply_text("❌ User tidak ditemukan")
+
+        await update.effective_message.reply_text(
+            f"✅ Waktu check-in `{alias}` diatur ke: *{start_time} - {end_time}*",
+            parse_mode="Markdown"
+        )
+    except ValueError:
+        await update.effective_message.reply_text(
+            "Format:\n/set_checkin_timerange <alias> <start_time> <end_time>\nContoh:\n/set_checkin_timerange icksan 07:15 07:35"
+        )
+
+
+async def set_checkout_timerange_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update, context):
+        return await deny(update)
+
+    try:
+        parts = update.message.text.split()
+        if len(parts) != 4:
+            raise ValueError()
+
+        alias = parts[1]
+        start_time = parts[2]
+        end_time = parts[3]
+
+        from bot.users import set_checkout_timerange
+        if not set_checkout_timerange(alias, start_time, end_time):
+            return await update.effective_message.reply_text("❌ User tidak ditemukan")
+
+        await update.effective_message.reply_text(
+            f"✅ Waktu check-out `{alias}` diatur ke: *{start_time} - {end_time}*",
+            parse_mode="Markdown"
+        )
+    except ValueError:
+        await update.effective_message.reply_text(
+            "Format:\n/set_checkout_timerange <alias> <start_time> <end_time>\nContoh:\n/set_checkout_timerange icksan 16:30 17:30"
+        )
 
 
 # ======================

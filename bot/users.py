@@ -76,3 +76,23 @@ def set_location_pool(alias: str, pool_name: str) -> bool:
     users[alias]["location_pool"] = pool_name.lower()
     save_users(users)
     return True
+
+
+def set_checkin_timerange(alias: str, start_time: str, end_time: str) -> bool:
+    users = load_users()
+    if alias not in users:
+        return False
+
+    users[alias]["checkin_timerange"] = f"{start_time}-{end_time}"
+    save_users(users)
+    return True
+
+
+def set_checkout_timerange(alias: str, start_time: str, end_time: str) -> bool:
+    users = load_users()
+    if alias not in users:
+        return False
+
+    users[alias]["checkout_timerange"] = f"{start_time}-{end_time}"
+    save_users(users)
+    return True

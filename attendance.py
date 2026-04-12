@@ -157,6 +157,19 @@ def _parse_id_date(raw_date: str) -> str:
         return raw_date or "-"
 
 
+def _parse_time_range(timerange_str: str | None, default_range: tuple) -> tuple:
+    """Parses 'HH:MM-HH:MM' into ((H, M), (H, M))"""
+    if not timerange_str:
+        return default_range
+    try:
+        start_str, end_str = timerange_str.split('-')
+        start_h, start_m = start_str.split(':')
+        end_h, end_m = end_str.split(':')
+        return ((int(start_h), int(start_m)), (int(end_h), int(end_m)))
+    except Exception:
+        return default_range
+
+
 # ======================
 # CHECK IN
 # ======================
@@ -186,12 +199,13 @@ def check_in(alias: str | None = None) -> str:
         pass
         
     try:
+        time_range = _parse_time_range(user.get("checkin_timerange"), ((7, 15), (7, 35)))
         res = _submit_attendance(
             alias=alias,
             token=token,
             user=user,
             date_key=date_key,
-            time_range=((7, 15), (7, 35)),
+            time_range=time_range,
             log_type="Start Day",
             notes=notes,
             is_test=TEST_MODE
@@ -227,12 +241,13 @@ def check_out(alias: str | None = None) -> str:
     user = _get_user(alias)
         
     try:
+        time_range = _parse_time_range(user.get("checkout_timerange"), ((16, 30), (17, 30)))
         res = _submit_attendance(
             alias=alias,
             token=token,
             user=user,
             date_key=date_key,
-            time_range=((16, 30), (17, 30)),
+            time_range=time_range,
             log_type="End Day",
             notes="",
             is_test=TEST_MODE
