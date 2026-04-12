@@ -71,7 +71,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             all_users[bot_alias]["chat_id"] = chat_id
             save_users(all_users)
             await update.effective_message.reply_text(
-                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <mb/kanpus/hotel_manhatan>. \n4.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
+                f"🎉 Selamat Datang!\n\nBot Personal untuk `{bot_alias}` berhasil dihubungkan dengan perangkat ini. \n\nSilahkan lakukan proses berikut agar bot bisa berjalan dengan normal:\n\n1.Silahkan minta admin untuk mereset IMEI dengan alasan 'ID already regstered with another IMEI' ketike mencoba login.\n\n2.Setelah imei berhasil direset, jalankan perintah /register_imei <alias>.\n\n3.Jika sudah berhasil, silahkan coba login dengan perintah /login <alias>.\n\n4.Jika sudah berhasil login berarti bot sudah bisa digunakan.\n\n5.Anda dapat menambahkan beberapa konfigurasi yang spesifik seperti : 1.Notes spesifik dengan perintah /setnotes <alias> <notes>. \n2.Mengaktifkan/menonaktifkan automation attandance dengan perintah /auto <on/off> <alias>. \n3.Mengubah location absen dengan perintah /setlocation <alias> <location_name>. (Gunakan /addlocation untuk menambah lokasi baru) \n4.Anda bisa mengecek history dengan perintah /history <alias> atau /history week atau /history month atau /history timesheet <alias>.\n6.Anda juga dapat melakukan absen masuk/pulang manual dengan perintah /masuk <alias> atau /pulang <alias>.\n\n DAH SISANYA TANYA ADMINN.", 
                 parse_mode="Markdown"
             )
             from logger import log
@@ -395,8 +395,12 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         alias = parts[1]
         pool = parts[2].lower()
 
-        if pool not in ("mb", "kanpus", "hotel_manhatan"):
-            return await update.effective_message.reply_text("❌ Location pool harus 'mb', 'kanpus', atau 'hotel_manhatan'")
+        from bot.location import load_locations
+        available_locations = load_locations()
+
+        if pool not in available_locations:
+            loc_list = ", ".join([f"'{k}'" for k in available_locations.keys()])
+            return await update.effective_message.reply_text(f"❌ Location pool tidak valid.\nTersedia: {loc_list}\nGunakan /addlocation untuk menambahkan.")
 
         if not set_location_pool(alias, pool):
             return await update.effective_message.reply_text("❌ User tidak ditemukan")
@@ -407,8 +411,44 @@ async def setlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except ValueError:
+        from bot.location import load_locations
+        loc_list = "|".join([k for k in load_locations().keys()])
         await update.effective_message.reply_text(
-            "Format:\n/setlocation <alias> <mb|kanpus|hotel_manhatan>"
+            f"Format:\n/setlocation <alias> <{loc_list}>"
+        )
+
+
+async def addlocation_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update, context):
+        return await deny(update)
+
+    try:
+        parts = update.message.text.split(maxsplit=2)
+        if len(parts) != 3:
+            raise ValueError()
+
+        loc_name = parts[1].lower()
+        latlng_str = parts[2]
+        
+        # Parse latlng (e.g. "12.34, 56.78" atau "-6.22,106.83")
+        latlng = latlng_str.replace(" ", "").split(",")
+        if len(latlng) != 2:
+            return await update.effective_message.reply_text("❌ Format latlng salah. Contoh: -6.225336,106.831291")
+            
+        lat = float(latlng[0])
+        lng = float(latlng[1])
+        
+        from bot.location import save_location
+        save_location(loc_name, lat, lng)
+
+        await update.effective_message.reply_text(
+            f"✅ Location `{loc_name}` berhasil ditambahkan/diupdate dengan koordinat {lat}, {lng}.",
+            parse_mode="Markdown"
+        )
+
+    except ValueError:
+        await update.effective_message.reply_text(
+            "Format:\n/addlocation <location_name> <lat,lng>\nContoh:\n/addlocation hotel_manhatan -6.2253,106.8312"
         )
 
 

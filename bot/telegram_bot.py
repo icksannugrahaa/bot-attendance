@@ -25,6 +25,7 @@ from bot.handlers import (
     setlocation_cmd,
     register_imei_cmd,
     gendeviceid_cmd,
+    addlocation_cmd,
     start_cmd
 )
 from bot.users import load_users
@@ -76,6 +77,7 @@ def build_bot_app(token: str, alias: str = "GLOBAL"):
     app.add_handler(CommandHandler("setnotes", setnotes_cmd))
     app.add_handler(CommandHandler("clearnotes", clearnotes_cmd))
     app.add_handler(CommandHandler("setlocation", setlocation_cmd))
+    app.add_handler(CommandHandler("addlocation", addlocation_cmd))
     app.add_handler(CommandHandler("register_imei", register_imei_cmd))
     app.add_handler(CommandHandler("gendeviceid", gendeviceid_cmd))
 

@@ -1,13 +1,40 @@
 import math
 import random
+import json
+import os
 
-# Base configurations
-MB_CENTER = (-6.240723226162096, 106.8365991740012)
-KANPUS_CENTER = (-6.216556144511367, 106.81407082204778)
-HOTEL_MANHATAN_CENTER = (-6.225336271972221, 106.83129136781952)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCATIONS_FILE = os.path.join(os.path.dirname(_BASE_DIR), "locations.json")
 
 # 1 degree of latitude is ~111km (111139 meters)
 LAT_METER_DEG = 1.0 / 111139.0
+
+def load_locations() -> dict:
+    locations = {}
+    if os.path.exists(LOCATIONS_FILE):
+        try:
+            with open(LOCATIONS_FILE, "r") as f:
+                data = json.load(f)
+                for k, v in data.items():
+                    locations[k] = (float(v[0]), float(v[1]))
+        except Exception:
+            pass
+    return locations
+
+def save_location(name: str, lat: float, lng: float):
+    # Ensure backward compatibility with existing data
+    if not os.path.exists(LOCATIONS_FILE):
+        data = {}
+    else:
+        try:
+            with open(LOCATIONS_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    
+    data[name.lower()] = (lat, lng)
+    with open(LOCATIONS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 def _meters_to_lng_deg(latitude: float) -> float:
@@ -21,14 +48,16 @@ def get_random_location(pool_type: str) -> dict:
     Default fallback is 'kanpus'.
     """
     pool_type = pool_type.lower()
+    locations = load_locations()
     
-    if pool_type == "mb":
-        center_lat, center_lng = MB_CENTER
-    elif pool_type == "hotel_manhatan":
-        center_lat, center_lng = HOTEL_MANHATAN_CENTER
-    else:
+    if pool_type in locations:
+        center_lat, center_lng = locations[pool_type]
+    elif "kanpus" in locations:
         # Default fallback to "kanpus"
-        center_lat, center_lng = KANPUS_CENTER
+        center_lat, center_lng = locations["kanpus"]
+    else:
+        # Failsafe if locations.json is empty or corrupt
+        center_lat, center_lng = (-6.216556144511367, 106.81407082204778)
 
     # Generate random distance up to 50m
     max_radius_m = 50.0
