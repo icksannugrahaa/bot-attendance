@@ -169,6 +169,17 @@ def random_time_between(start: time, end: time) -> str:
     m = (sec % 3600) // 60
     return f"{h:02d}:{m:02d}"
 
+def _get_user_time_bounds(timerange_str: str | None, default_start: time, default_end: time) -> tuple:
+    if not timerange_str:
+        return default_start, default_end
+    try:
+        start_str, end_str = timerange_str.split('-')
+        start_h, start_m = map(int, start_str.split(':'))
+        end_h, end_m = map(int, end_str.split(':'))
+        return time(start_h, start_m), time(end_h, end_m)
+    except Exception:
+        return default_start, default_end
+
 
 def status_path(alias: str) -> str:
     return os.path.join(STATUS_DIR, f"{alias}.json")
@@ -206,14 +217,17 @@ def save_daily_schedule(alias: str, date_key: str, payload: dict):
         json.dump(data, f, indent=2)
 
 
-def ensure_schedule(alias: str, date_key: str) -> dict:
+def ensure_schedule(alias: str, date_key: str, user: dict) -> dict:
     sched = load_daily_schedule(alias, date_key)
     if sched:
         return sched
 
+    in_start, in_end = _get_user_time_bounds(user.get("checkin_timerange"), CHECK_IN_START, CHECK_IN_END)
+    out_start, out_end = _get_user_time_bounds(user.get("checkout_timerange"), CHECK_OUT_START, CHECK_OUT_END)
+
     sched = {
-        "in": random_time_between(CHECK_IN_START, CHECK_IN_END),
-        "out": random_time_between(CHECK_OUT_START, CHECK_OUT_END)
+        "in": random_time_between(in_start, in_end),
+        "out": random_time_between(out_start, out_end)
     }
 
     save_daily_schedule(alias, date_key, sched)
@@ -271,13 +285,14 @@ def run():
             continue
 
         try:
-            sched = ensure_schedule(alias, date_key)
-            send_telegram(f"[AUTO] [{alias}] Jadwal hari ini IN={sched['in']} OUT={sched['out']} ON {user.get('location_pool')}", alias)
+            sched = ensure_schedule(alias, date_key, user)
 
             # ===== CHECK IN =====
             if not is_already_checked_in(alias, date_key):
                 sched_in = time.fromisoformat(sched["in"])
-                if now_t >= sched_in and in_range(now_t, CHECK_IN_START, CHECK_IN_END):
+                in_start, in_end = _get_user_time_bounds(user.get("checkin_timerange"), CHECK_IN_START, CHECK_IN_END)
+                send_telegram(f"[AUTO] [{alias}] Jadwal hari ini IN={sched['in']} OUT={sched['out']} ON {user.get('location_pool')}", alias)
+                if now_t >= sched_in and in_range(now_t, in_start, in_end):
                     force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen masuk @ {sched['in']}")
                     msg = check_in(alias)
@@ -286,7 +301,8 @@ def run():
             # ===== CHECK OUT =====
             elif not is_already_checked_out(alias, date_key):
                 sched_out = time.fromisoformat(sched["out"])
-                if now_t >= sched_out and in_range(now_t, CHECK_OUT_START, CHECK_OUT_END):
+                out_start, out_end = _get_user_time_bounds(user.get("checkout_timerange"), CHECK_OUT_START, CHECK_OUT_END)
+                if now_t >= sched_out and in_range(now_t, out_start, out_end):
                     force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen pulang @ {sched['out']}")
                     msg = check_out(alias)
