@@ -232,6 +232,7 @@ def ensure_schedule(alias: str, date_key: str, user: dict) -> dict:
 
     save_daily_schedule(alias, date_key, sched)
     log(f"[AUTO] [{alias}] Jadwal hari ini IN={sched['in']} OUT={sched['out']}")
+    send_telegram(f"[AUTO] [{alias}] Jadwal hari ini IN={sched['in']} OUT={sched['out']} ON {user.get('location_pool')}", alias)
     return sched
 
 
@@ -291,7 +292,6 @@ def run():
             if not is_already_checked_in(alias, date_key):
                 sched_in = time.fromisoformat(sched["in"])
                 in_start, in_end = _get_user_time_bounds(user.get("checkin_timerange"), CHECK_IN_START, CHECK_IN_END)
-                send_telegram(f"[AUTO] [{alias}] Jadwal hari ini IN={sched['in']} OUT={sched['out']} ON {user.get('location_pool')}", alias)
                 if now_t >= sched_in and in_range(now_t, in_start, in_end):
                     force_login(alias, user)
                     log(f"[AUTO] [{alias}] Eksekusi absen masuk @ {sched['in']}")
